@@ -1,4 +1,3 @@
-
 Endware UI
 
 A modern, reusable, cartoony Roblox UI library written in Luau.
