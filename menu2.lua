@@ -4,7 +4,7 @@
     Modern cartoony Roblox GUI library.
 
     Runtime: Client only (LocalScript)
-    Version: 1.0.0
+    Version: 1.3.0
 ]]
 
 local Players = game:GetService("Players")
@@ -19,7 +19,7 @@ assert(LOCAL_PLAYER, "[Endware] LocalPlayer is not available.")
 
 local Endware = {}
 Endware.__index = Endware
-Endware.Version = "1.0.0"
+Endware.Version = "1.3.0"
 
 export type Theme = {
     Background: Color3,
@@ -72,16 +72,16 @@ export type ButtonOptions = {
 local DEFAULT_THEME: Theme = {
     Background = Color3.fromRGB(255, 247, 238),
     Surface = Color3.fromRGB(255, 255, 255),
-    SurfaceAlt = Color3.fromRGB(250, 242, 233),
-    Sidebar = Color3.fromRGB(255, 238, 218),
-    Text = Color3.fromRGB(60, 49, 59),
-    MutedText = Color3.fromRGB(137, 121, 134),
+    SurfaceAlt = Color3.fromRGB(255, 243, 231),
+    Sidebar = Color3.fromRGB(255, 230, 205),
+    Text = Color3.fromRGB(47, 35, 48),
+    MutedText = Color3.fromRGB(104, 84, 100),
     Accent = Color3.fromRGB(255, 105, 133),
-    AccentDark = Color3.fromRGB(219, 72, 104),
+    AccentDark = Color3.fromRGB(205, 55, 91),
     AccentSoft = Color3.fromRGB(255, 216, 226),
-    Secondary = Color3.fromRGB(255, 194, 92),
-    Positive = Color3.fromRGB(83, 204, 151),
-    Stroke = Color3.fromRGB(234, 215, 204),
+    Secondary = Color3.fromRGB(255, 190, 78),
+    Positive = Color3.fromRGB(69, 190, 137),
+    Stroke = Color3.fromRGB(226, 196, 180),
     Shadow = Color3.fromRGB(108, 82, 94),
     White = Color3.fromRGB(255, 255, 255),
 }
@@ -269,29 +269,71 @@ SectionMethods.__index = SectionMethods
 local function setTabVisual(tab: any, selected: boolean)
     tab._selected = selected
 
+    -- Tab text is rendered both by the TextButton itself and the decorative
+    -- child label. The button text acts as a guaranteed fallback on clients
+    -- where nested GUI ZIndex rendering behaves unexpectedly.
+    tab._button.Visible = true
+    tab._button.TextTransparency = 0
+    tab._label.Visible = true
+    tab._label.TextTransparency = 0
+    tab._icon.Visible = true
+    tab._icon.TextTransparency = 0
+
     if selected then
         playTween(tab._button, NORMAL_TWEEN, {
             BackgroundColor3 = tab._window.Theme.Accent,
             BackgroundTransparency = 0,
+            TextColor3 = tab._window.Theme.White,
+            TextTransparency = 0,
+        })
+        playTween(tab._stroke, NORMAL_TWEEN, {
+            Color = tab._window.Theme.AccentDark,
+            Transparency = 0.18,
+        })
+        playTween(tab._indicator, BOUNCE_TWEEN, {
+            BackgroundTransparency = 0,
+            Size = UDim2.fromOffset(7, 30),
         })
         playTween(tab._iconBubble, NORMAL_TWEEN, {
             BackgroundColor3 = tab._window.Theme.White,
-            BackgroundTransparency = 0.08,
+            BackgroundTransparency = 0,
         })
-        playTween(tab._label, FAST_TWEEN, {TextColor3 = tab._window.Theme.White})
-        playTween(tab._icon, FAST_TWEEN, {TextColor3 = tab._window.Theme.AccentDark})
+        playTween(tab._label, FAST_TWEEN, {
+            TextColor3 = tab._window.Theme.White,
+            TextTransparency = 0,
+        })
+        playTween(tab._icon, FAST_TWEEN, {
+            TextColor3 = tab._window.Theme.AccentDark,
+            TextTransparency = 0,
+        })
         tab._page.Visible = true
     else
         playTween(tab._button, FAST_TWEEN, {
             BackgroundColor3 = tab._window.Theme.Surface,
+            BackgroundTransparency = 0,
+            TextColor3 = tab._window.Theme.Text,
+            TextTransparency = 0,
+        })
+        playTween(tab._stroke, FAST_TWEEN, {
+            Color = tab._window.Theme.Stroke,
+            Transparency = 0,
+        })
+        playTween(tab._indicator, FAST_TWEEN, {
             BackgroundTransparency = 1,
+            Size = UDim2.fromOffset(5, 22),
         })
         playTween(tab._iconBubble, FAST_TWEEN, {
             BackgroundColor3 = tab._window.Theme.AccentSoft,
             BackgroundTransparency = 0,
         })
-        playTween(tab._label, FAST_TWEEN, {TextColor3 = tab._window.Theme.Text})
-        playTween(tab._icon, FAST_TWEEN, {TextColor3 = tab._window.Theme.AccentDark})
+        playTween(tab._label, FAST_TWEEN, {
+            TextColor3 = tab._window.Theme.Text,
+            TextTransparency = 0,
+        })
+        playTween(tab._icon, FAST_TWEEN, {
+            TextColor3 = tab._window.Theme.AccentDark,
+            TextTransparency = 0,
+        })
         tab._page.Visible = false
     end
 end
@@ -468,25 +510,59 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         _selected = false,
     }, TabMethods)
 
+    -- Explicit positioning avoids Roblox UIListLayout/AutomaticCanvasSize
+    -- rendering inconsistencies inside ScrollingFrames.
+    local tabIndex = #self._tabs + 1
+    local tabStride = 63
+
     local button = create("TextButton", {
         Name = data.Name .. "Tab",
+        Active = true,
         AutoButtonColor = false,
         BackgroundColor3 = self.Theme.Surface,
-        BackgroundTransparency = 1,
+        BackgroundTransparency = 0,
         BorderSizePixel = 0,
-        LayoutOrder = #self._tabs + 1,
-        Size = UDim2.new(1, 0, 0, 50),
-        Text = "",
+        Font = Enum.Font.GothamBold,
+        LayoutOrder = tabIndex,
+        Position = UDim2.fromOffset(0, (tabIndex - 1) * tabStride),
+        Selectable = true,
+        Size = UDim2.new(1, -6, 0, 54),
+        -- Built-in text is a render-safe fallback. The decorative label below
+        -- sits over it during normal rendering.
+        Text = data.Name,
+        TextColor3 = self.Theme.Text,
+        TextSize = 14,
+        TextTransparency = 0,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Visible = true,
+        ZIndex = 50,
         Parent = self._tabList,
     })
     addCorner(button, 16)
+    addPadding(button, 57, 10, 0, 0)
+    local buttonStroke = addStroke(button, self.Theme.Stroke, 1.5, 0)
+
+    local indicator = create("Frame", {
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundColor3 = self.Theme.Secondary,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 5, 0.5, 0),
+        Size = UDim2.fromOffset(4, 20),
+        Visible = true,
+        ZIndex = 54,
+        Parent = button,
+    })
+    addCorner(indicator, 6)
 
     local iconBubble = create("Frame", {
         AnchorPoint = Vector2.new(0, 0.5),
         BackgroundColor3 = self.Theme.AccentSoft,
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 9, 0.5, 0),
+        Position = UDim2.new(0, 13, 0.5, 0),
         Size = UDim2.fromOffset(34, 34),
+        Visible = true,
+        ZIndex = 52,
         Parent = button,
     })
     addCorner(iconBubble, 12)
@@ -498,18 +574,24 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         Text = data.Icon or "•",
         TextColor3 = self.Theme.AccentDark,
         TextSize = 18,
+        TextTransparency = 0,
         TextXAlignment = Enum.TextXAlignment.Center,
+        Visible = true,
+        ZIndex = 53,
         Parent = iconBubble,
     })
 
     local label = makeTextLabel({
         Font = Enum.Font.GothamBold,
-        Position = UDim2.fromOffset(55, 0),
-        Size = UDim2.new(1, -65, 1, 0),
+        Position = UDim2.fromOffset(57, 0),
+        Size = UDim2.new(1, -69, 1, 0),
         Text = data.Name,
         TextColor3 = self.Theme.Text,
-        TextSize = 13,
+        TextSize = 14,
+        TextTransparency = 0,
         TextTruncate = Enum.TextTruncate.AtEnd,
+        Visible = true,
+        ZIndex = 53,
         Parent = button,
     })
 
@@ -539,6 +621,8 @@ function WindowMethods:CreateTab(options: TabOptions | string)
     })
 
     tab._button = button
+    tab._stroke = buttonStroke
+    tab._indicator = indicator
     tab._iconBubble = iconBubble
     tab._icon = icon
     tab._label = label
@@ -552,7 +636,13 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         if not tab._selected then
             playTween(button, FAST_TWEEN, {
                 BackgroundColor3 = self.Theme.AccentSoft,
-                BackgroundTransparency = 0.35,
+                BackgroundTransparency = 0,
+                TextColor3 = self.Theme.Text,
+                TextTransparency = 0,
+            })
+            playTween(buttonStroke, FAST_TWEEN, {
+                Color = self.Theme.Accent,
+                Transparency = 0.5,
             })
         end
     end))
@@ -561,12 +651,22 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         if not tab._selected then
             playTween(button, FAST_TWEEN, {
                 BackgroundColor3 = self.Theme.Surface,
-                BackgroundTransparency = 1,
+                BackgroundTransparency = 0,
+                TextColor3 = self.Theme.Text,
+                TextTransparency = 0,
+            })
+            playTween(buttonStroke, FAST_TWEEN, {
+                Color = self.Theme.Stroke,
+                Transparency = 0,
             })
         end
     end))
 
     table.insert(self._tabs, tab)
+
+    local requiredCanvasHeight = math.max(0, (#self._tabs * tabStride) - 9)
+    self._tabList.CanvasSize = UDim2.fromOffset(0, requiredCanvasHeight)
+    button.Visible = true
 
     if #self._tabs == 1 then
         self:_selectTab(tab)
@@ -615,13 +715,24 @@ function TabMethods:CreateSection(title: string)
         BorderSizePixel = 0,
         LayoutOrder = #self._page:GetChildren() + 1,
         Size = UDim2.new(1, -2, 0, 0),
+        ZIndex = 2,
         Parent = self._page,
+    })
+
+    create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        Padding = UDim.new(0, 0),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = container,
     })
 
     local header = create("Frame", {
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Size = UDim2.new(1, 0, 0, 34),
+        LayoutOrder = 1,
+        Size = UDim2.new(1, 0, 0, 36),
+        ZIndex = 2,
         Parent = container,
     })
 
@@ -631,6 +742,7 @@ function TabMethods:CreateSection(title: string)
         BorderSizePixel = 0,
         Position = UDim2.new(0, 2, 0.5, 0),
         Size = UDim2.fromOffset(12, 12),
+        ZIndex = 3,
         Parent = header,
     })
     addCorner(dot, 6)
@@ -641,7 +753,8 @@ function TabMethods:CreateSection(title: string)
         Size = UDim2.new(1, -22, 1, 0),
         Text = title,
         TextColor3 = window.Theme.Text,
-        TextSize = 17,
+        TextSize = 18,
+        ZIndex = 3,
         Parent = header,
     })
 
@@ -649,8 +762,9 @@ function TabMethods:CreateSection(title: string)
         AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundColor3 = window.Theme.Surface,
         BorderSizePixel = 0,
-        Position = UDim2.fromOffset(0, 34),
+        LayoutOrder = 2,
         Size = UDim2.new(1, 0, 0, 0),
+        ZIndex = 2,
         Parent = container,
     })
     addCorner(body, 20)
@@ -700,10 +814,12 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         BackgroundColor3 = window.Theme.SurfaceAlt,
         BorderSizePixel = 0,
         LayoutOrder = #self._body:GetChildren() + 1,
-        Size = UDim2.new(1, 0, 0, 72),
+        Size = UDim2.new(1, 0, 0, 78),
+        ZIndex = 2,
         Parent = self._body,
     })
     addCorner(row, 16)
+    local rowStroke = addStroke(row, window.Theme.Stroke, 1.15, 0.28)
 
     local clickArea = create("TextButton", {
         AutoButtonColor = false,
@@ -711,33 +827,33 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         BorderSizePixel = 0,
         Size = UDim2.fromScale(1, 1),
         Text = "",
-        ZIndex = 5,
+        ZIndex = 8,
         Parent = row,
     })
 
     makeTextLabel({
         Font = Enum.Font.GothamBold,
-        Position = UDim2.fromOffset(16, 10),
-        Size = UDim2.new(1, -170, 0, 23),
+        Position = UDim2.fromOffset(16, 11),
+        Size = UDim2.new(1, -184, 0, 24),
         Text = options.Name,
         TextColor3 = window.Theme.Text,
-        TextSize = 14,
+        TextSize = 15,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        ZIndex = 2,
+        ZIndex = 4,
         Parent = row,
     })
 
     makeTextLabel({
         Font = Enum.Font.Gotham,
-        Position = UDim2.fromOffset(16, 34),
-        Size = UDim2.new(1, -170, 0, 28),
+        Position = UDim2.fromOffset(16, 38),
+        Size = UDim2.new(1, -184, 0, 29),
         Text = options.Description or "Bu seçeneği aç veya kapat.",
         TextColor3 = window.Theme.MutedText,
         TextSize = 11,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextWrapped = true,
         TextYAlignment = Enum.TextYAlignment.Top,
-        ZIndex = 2,
+        ZIndex = 4,
         Parent = row,
     })
 
@@ -745,9 +861,9 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         AnchorPoint = Vector2.new(1, 0.5),
         BackgroundColor3 = window.Theme.Surface,
         BorderSizePixel = 0,
-        Position = UDim2.new(1, -58, 0.5, 0),
-        Size = UDim2.fromOffset(52, 26),
-        ZIndex = 2,
+        Position = UDim2.new(1, -61, 0.5, 0),
+        Size = UDim2.fromOffset(58, 28),
+        ZIndex = 4,
         Parent = row,
     })
     addCorner(statePill, 13)
@@ -757,9 +873,9 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         Size = UDim2.fromScale(1, 1),
         Text = "KAPALI",
         TextColor3 = window.Theme.MutedText,
-        TextSize = 9,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Center,
-        ZIndex = 3,
+        ZIndex = 5,
         Parent = statePill,
     })
 
@@ -768,8 +884,8 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         BackgroundColor3 = window.Theme.Surface,
         BorderSizePixel = 0,
         Position = UDim2.new(1, -14, 0.5, 0),
-        Size = UDim2.fromOffset(34, 34),
-        ZIndex = 2,
+        Size = UDim2.fromOffset(38, 38),
+        ZIndex = 4,
         Parent = row,
     })
     addCorner(box, 11)
@@ -785,9 +901,9 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         Size = UDim2.fromScale(1, 1),
         Text = "✓",
         TextColor3 = window.Theme.White,
-        TextSize = 22,
+        TextSize = 24,
         TextXAlignment = Enum.TextXAlignment.Center,
-        ZIndex = 3,
+        ZIndex = 5,
         Parent = box,
     })
 
@@ -859,10 +975,18 @@ function SectionMethods:AddCheckbox(options: CheckboxOptions)
         playTween(row, FAST_TWEEN, {
             BackgroundColor3 = window.Theme.AccentSoft:Lerp(window.Theme.SurfaceAlt, 0.38),
         })
+        playTween(rowStroke, FAST_TWEEN, {
+            Color = window.Theme.Accent,
+            Transparency = 0.45,
+        })
     end))
 
     controlMaid:Give(clickArea.MouseLeave:Connect(function()
         playTween(row, FAST_TWEEN, {BackgroundColor3 = window.Theme.SurfaceAlt})
+        playTween(rowStroke, FAST_TWEEN, {
+            Color = window.Theme.Stroke,
+            Transparency = 0.28,
+        })
     end))
 
     if options.FireOnInit then
@@ -886,32 +1010,36 @@ function SectionMethods:AddButton(options: ButtonOptions)
         BackgroundColor3 = window.Theme.SurfaceAlt,
         BorderSizePixel = 0,
         LayoutOrder = #self._body:GetChildren() + 1,
-        Size = UDim2.new(1, 0, 0, 72),
+        Size = UDim2.new(1, 0, 0, 78),
+        ZIndex = 2,
         Parent = self._body,
     })
     addCorner(row, 16)
+    addStroke(row, window.Theme.Stroke, 1.15, 0.28)
 
     makeTextLabel({
         Font = Enum.Font.GothamBold,
-        Position = UDim2.fromOffset(16, 10),
-        Size = UDim2.new(1, -155, 0, 23),
+        Position = UDim2.fromOffset(16, 11),
+        Size = UDim2.new(1, -166, 0, 24),
         Text = options.Name,
         TextColor3 = window.Theme.Text,
-        TextSize = 14,
+        TextSize = 15,
         TextTruncate = Enum.TextTruncate.AtEnd,
+        ZIndex = 4,
         Parent = row,
     })
 
     makeTextLabel({
         Font = Enum.Font.Gotham,
-        Position = UDim2.fromOffset(16, 34),
-        Size = UDim2.new(1, -155, 0, 28),
+        Position = UDim2.fromOffset(16, 38),
+        Size = UDim2.new(1, -166, 0, 29),
         Text = options.Description or "Bu işlemi çalıştır.",
         TextColor3 = window.Theme.MutedText,
         TextSize = 11,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextWrapped = true,
         TextYAlignment = Enum.TextYAlignment.Top,
+        ZIndex = 4,
         Parent = row,
     })
 
@@ -922,10 +1050,11 @@ function SectionMethods:AddButton(options: ButtonOptions)
         BorderSizePixel = 0,
         Font = Enum.Font.GothamBold,
         Position = UDim2.new(1, -14, 0.5, 0),
-        Size = UDim2.fromOffset(118, 38),
+        Size = UDim2.fromOffset(128, 42),
         Text = options.ButtonText or "ÇALIŞTIR",
         TextColor3 = window.Theme.Text,
-        TextSize = 11,
+        TextSize = 12,
+        ZIndex = 5,
         Parent = row,
     })
     addCorner(action, 13)
@@ -976,9 +1105,11 @@ function SectionMethods:AddParagraph(title: string, content: string)
         BorderSizePixel = 0,
         LayoutOrder = #self._body:GetChildren() + 1,
         Size = UDim2.new(1, 0, 0, 0),
+        ZIndex = 2,
         Parent = self._body,
     })
     addCorner(row, 16)
+    addStroke(row, window.Theme.Accent, 1.1, 0.68)
     addPadding(row, 16, 16, 12, 14)
 
     local layout = create("UIListLayout", {
@@ -1219,7 +1350,7 @@ function Endware:CreateWindow(options: WindowOptions?)
         BorderSizePixel = 0,
         Position = UDim2.fromOffset(0, 76),
         Size = UDim2.new(0, 216, 1, -76),
-        ZIndex = 2,
+        ZIndex = 5,
         Parent = main,
     })
 
@@ -1230,27 +1361,29 @@ function Endware:CreateWindow(options: WindowOptions?)
         Text = "MENÜLER",
         TextColor3 = theme.MutedText,
         TextSize = 10,
-        ZIndex = 3,
+        TextTransparency = 0,
+        ZIndex = 11,
         Parent = sidebar,
     })
 
     local tabList = create("ScrollingFrame", {
+        Name = "TabList",
         Active = true,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        AutomaticCanvasSize = Enum.AutomaticSize.None,
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
+        CanvasPosition = Vector2.zero,
         CanvasSize = UDim2.fromOffset(0, 0),
+        ClipsDescendants = true,
         Position = UDim2.fromOffset(14, 45),
-        ScrollBarThickness = 0,
+        ScrollBarImageColor3 = theme.Accent,
+        ScrollBarImageTransparency = 0.25,
+        ScrollBarThickness = 4,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
         Size = UDim2.new(1, -28, 1, -105),
-        ZIndex = 3,
+        Visible = true,
+        ZIndex = 40,
         Parent = sidebar,
-    })
-    create("UIListLayout", {
-        FillDirection = Enum.FillDirection.Vertical,
-        Padding = UDim.new(0, 8),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = tabList,
     })
 
     local versionCard = create("Frame", {
@@ -1260,7 +1393,7 @@ function Endware:CreateWindow(options: WindowOptions?)
         BorderSizePixel = 0,
         Position = UDim2.new(0.5, 0, 1, -14),
         Size = UDim2.new(1, -28, 0, 46),
-        ZIndex = 3,
+        ZIndex = 10,
         Parent = sidebar,
     })
     addCorner(versionCard, 14)
@@ -1272,7 +1405,8 @@ function Endware:CreateWindow(options: WindowOptions?)
         Text = "ENDWARE UI",
         TextColor3 = theme.Text,
         TextSize = 12,
-        ZIndex = 4,
+        TextTransparency = 0,
+        ZIndex = 11,
         Parent = versionCard,
     })
 
@@ -1283,7 +1417,8 @@ function Endware:CreateWindow(options: WindowOptions?)
         Text = "v" .. Endware.Version .. "  •  Cartoony",
         TextColor3 = theme.MutedText,
         TextSize = 9,
-        ZIndex = 4,
+        TextTransparency = 0,
+        ZIndex = 11,
         Parent = versionCard,
     })
 
@@ -1468,125 +1603,4 @@ function Endware:CreateWindow(options: WindowOptions?)
     return window
 end
 
-local EndwareLibrary = setmetatable({}, Endware)
-
--- ============================================================
--- PASTE-AND-RUN DEMO
--- Everything below this line is example configuration.
--- ============================================================
-
-local Window = EndwareLibrary:CreateWindow({
-    Title = "ENDWARE",
-    Subtitle = "Cartoony Control Center",
-    ToggleKey = Enum.KeyCode.RightShift,
-    Size = UDim2.fromOffset(780, 510),
-})
-
-local HomeTab = Window:CreateTab({Name = "Ana Sayfa", Icon = "★"})
-HomeTab:SetDescription("Kütüphane tanıtımı ve hızlı işlemler")
-
-local WelcomeSection = HomeTab:CreateSection("Hoş Geldin")
-WelcomeSection:AddParagraph(
-    "Endware UI",
-    "Modern, tekrar kullanılabilir ve tamamen Luau ile oluşturulan cartoony Roblox arayüzü. Menüyü Sağ Shift tuşuyla gizleyip gösterebilirsin."
-)
-WelcomeSection:AddButton({
-    Name = "Test Bildirimi",
-    Description = "Endware bildirim sistemini çalıştırır.",
-    ButtonText = "GÖSTER",
-    Callback = function()
-        Window:Notify({
-            Title = "Endware hazır!",
-            Content = "GUI ve callback sistemi sorunsuz çalışıyor.",
-            Duration = 3,
-        })
-    end,
-})
-
-local InterfaceTab = Window:CreateTab({Name = "Arayüz", Icon = "✦"})
-InterfaceTab:SetDescription("Görsel ve kullanıcı deneyimi seçenekleri")
-
-local VisualSection = InterfaceTab:CreateSection("Görsel Ayarlar")
-VisualSection:AddCheckbox({
-    Name = "Parlak Efektler",
-    Description = "Menü içindeki parlak animasyonları etkinleştirir.",
-    Flag = "BrightEffects",
-    Default = true,
-    Callback = function(enabled)
-        print("BrightEffects:", enabled)
-    end,
-})
-VisualSection:AddCheckbox({
-    Name = "Yumuşak Animasyonlar",
-    Description = "Geçişlerin daha yumuşak görünmesini sağlar.",
-    Flag = "SmoothAnimations",
-    Default = true,
-    Callback = function(enabled)
-        Window:Notify({
-            Title = "Animasyon ayarı",
-            Content = enabled and "Yumuşak animasyonlar açıldı." or "Yumuşak animasyonlar kapatıldı.",
-            Duration = 2,
-        })
-    end,
-})
-VisualSection:AddCheckbox({
-    Name = "Kompakt Görünüm",
-    Description = "Kendi düzen sistemine bağlayabileceğin örnek bir flag.",
-    Flag = "CompactMode",
-    Default = false,
-    Callback = function(enabled)
-        print("CompactMode:", enabled)
-    end,
-})
-
-local GameplayTab = Window:CreateTab({Name = "Oyun", Icon = "▶"})
-GameplayTab:SetDescription("Oyuna özel istemci ayarları")
-
-local GameplaySection = GameplayTab:CreateSection("Genel")
-GameplaySection:AddCheckbox({
-    Name = "Arka Plan Müziği",
-    Description = "Kendi müzik sistemine bağlanabilecek örnek checkbox.",
-    Flag = "MusicEnabled",
-    Default = true,
-    Callback = function(enabled)
-        print("MusicEnabled:", enabled)
-    end,
-})
-GameplaySection:AddCheckbox({
-    Name = "Bildirimler",
-    Description = "Oyun içi bildirim tercihini saklayan örnek flag.",
-    Flag = "NotificationsEnabled",
-    Default = true,
-    Callback = function(enabled)
-        print("NotificationsEnabled:", enabled)
-    end,
-})
-
-local SettingsTab = Window:CreateTab({Name = "Ayarlar", Icon = "⚙"})
-SettingsTab:SetDescription("Endware örneğinin yönetim araçları")
-
-local SystemSection = SettingsTab:CreateSection("Sistem")
-SystemSection:AddButton({
-    Name = "Flag Değerlerini Yazdır",
-    Description = "Mevcut checkbox değerlerini Output penceresine yollar.",
-    ButtonText = "YAZDIR",
-    Callback = function()
-        for flag, value in pairs(Window.Flags) do
-            print(flag, value)
-        end
-    end,
-})
-SystemSection:AddButton({
-    Name = "Menüyü Gizle",
-    Description = "Menüyü kapatır; Sağ Shift ile tekrar açabilirsin.",
-    ButtonText = "GİZLE",
-    Callback = function()
-        Window:SetVisible(false)
-    end,
-})
-
-Window:Notify({
-    Title = "ENDWARE",
-    Content = "Menü yüklendi. Sağ Shift ile görünürlüğü değiştirebilirsin.",
-    Duration = 4,
-})
+return setmetatable({}, Endware)
