@@ -4,7 +4,7 @@
     Modern cartoony Roblox GUI library.
 
     Runtime: Client only (LocalScript)
-    Version: 1.3.0
+    Version: 1.4.0
 ]]
 
 local Players = game:GetService("Players")
@@ -19,7 +19,7 @@ assert(LOCAL_PLAYER, "[Endware] LocalPlayer is not available.")
 
 local Endware = {}
 Endware.__index = Endware
-Endware.Version = "1.3.0"
+Endware.Version = "1.4.0"
 
 export type Theme = {
     Background: Color3,
@@ -527,12 +527,12 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         Position = UDim2.fromOffset(0, (tabIndex - 1) * tabStride),
         Selectable = true,
         Size = UDim2.new(1, -6, 0, 54),
-        -- Built-in text is a render-safe fallback. The decorative label below
-        -- sits over it during normal rendering.
-        Text = data.Name,
+        -- The dedicated label below renders the tab title.
+        -- Keeping TextButton.Text empty prevents duplicated/overlapping text.
+        Text = "",
         TextColor3 = self.Theme.Text,
         TextSize = 14,
-        TextTransparency = 0,
+        TextTransparency = 1,
         TextXAlignment = Enum.TextXAlignment.Left,
         Visible = true,
         ZIndex = 50,
@@ -1046,13 +1046,13 @@ function SectionMethods:AddButton(options: ButtonOptions)
     local action = create("TextButton", {
         AnchorPoint = Vector2.new(1, 0.5),
         AutoButtonColor = false,
-        BackgroundColor3 = window.Theme.Secondary,
+        BackgroundColor3 = window.Theme.Accent,
         BorderSizePixel = 0,
         Font = Enum.Font.GothamBold,
         Position = UDim2.new(1, -14, 0.5, 0),
         Size = UDim2.fromOffset(128, 42),
         Text = options.ButtonText or "ÇALIŞTIR",
-        TextColor3 = window.Theme.Text,
+        TextColor3 = window.Theme.White,
         TextSize = 12,
         ZIndex = 5,
         Parent = row,
@@ -1067,12 +1067,12 @@ function SectionMethods:AddButton(options: ButtonOptions)
 
     controlMaid:Give(action.MouseEnter:Connect(function()
         playTween(actionScale, FAST_TWEEN, {Scale = 1.04})
-        playTween(action, FAST_TWEEN, {BackgroundColor3 = window.Theme.Secondary:Lerp(window.Theme.White, 0.18)})
+        playTween(action, FAST_TWEEN, {BackgroundColor3 = window.Theme.AccentDark})
     end))
 
     controlMaid:Give(action.MouseLeave:Connect(function()
         playTween(actionScale, FAST_TWEEN, {Scale = 1})
-        playTween(action, FAST_TWEEN, {BackgroundColor3 = window.Theme.Secondary})
+        playTween(action, FAST_TWEEN, {BackgroundColor3 = window.Theme.Accent})
     end))
 
     controlMaid:Give(action.MouseButton1Down:Connect(function()
@@ -1603,4 +1603,4 @@ function Endware:CreateWindow(options: WindowOptions?)
     return window
 end
 
-return setmetatable({}, Endware)
+return Endware
