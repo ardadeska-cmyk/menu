@@ -4,7 +4,7 @@
     Modern cartoony Roblox GUI library.
 
     Runtime: Client only (LocalScript)
-    Version: 1.4.0
+    Version: 1.4.1
 ]]
 
 local Players = game:GetService("Players")
@@ -19,7 +19,7 @@ assert(LOCAL_PLAYER, "[Endware] LocalPlayer is not available.")
 
 local Endware = {}
 Endware.__index = Endware
-Endware.Version = "1.4.0"
+Endware.Version = "1.4.1"
 
 export type Theme = {
     Background: Color3,
@@ -539,7 +539,6 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         Parent = self._tabList,
     })
     addCorner(button, 16)
-    addPadding(button, 57, 10, 0, 0)
     local buttonStroke = addStroke(button, self.Theme.Stroke, 1.5, 0)
 
     local indicator = create("Frame", {
@@ -559,8 +558,8 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         AnchorPoint = Vector2.new(0, 0.5),
         BackgroundColor3 = self.Theme.AccentSoft,
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 13, 0.5, 0),
-        Size = UDim2.fromOffset(34, 34),
+        Position = UDim2.new(0, 14, 0.5, 0),
+        Size = UDim2.fromOffset(32, 32),
         Visible = true,
         ZIndex = 52,
         Parent = button,
@@ -573,7 +572,7 @@ function WindowMethods:CreateTab(options: TabOptions | string)
         Size = UDim2.fromScale(1, 1),
         Text = data.Icon or "•",
         TextColor3 = self.Theme.AccentDark,
-        TextSize = 18,
+        TextSize = 16,
         TextTransparency = 0,
         TextXAlignment = Enum.TextXAlignment.Center,
         Visible = true,
@@ -583,8 +582,8 @@ function WindowMethods:CreateTab(options: TabOptions | string)
 
     local label = makeTextLabel({
         Font = Enum.Font.GothamBold,
-        Position = UDim2.fromOffset(57, 0),
-        Size = UDim2.new(1, -69, 1, 0),
+        Position = UDim2.fromOffset(58, 0),
+        Size = UDim2.new(1, -70, 1, 0),
         Text = data.Name,
         TextColor3 = self.Theme.Text,
         TextSize = 14,
